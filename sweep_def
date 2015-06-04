@@ -1,0 +1,121 @@
+var express = require('express');
+var app = express();
+var fs = require('fs');
+var liner = require('./liner');
+var exec = require('child_process').exec;
+
+var source = fs.createReadStream('/Users/laura/bma-proto/proto/definitions.proto');
+
+var pattern = /^    /;
+var codeDir = '/Users/laura/mobileweb/frontend/platform/public/js/ /Users/laura/mobileweb/frontend/core/public/js/ /Users/laura/mobileweb/frontend/badoo/public/js/ /Users/laura/mobileweb/frontend/hotornot/public/js/';
+source.pipe(liner);
+
+var deprecatedFields = [];
+var deprecatedUsed = [];
+
+var count = 0;
+
+liner.on('readable', function () {
+    var line;
+
+    while (line = liner.read()) {
+
+        if (pattern.test(line)) {
+            var deprecated = line.indexOf('[deprecated=true]') > 0;
+            var commandName = line.substring(4, line.indexOf(' ='));
+
+            if (deprecated) {
+                deprecatedFields.push(commandName);
+            }
+        }
+    }
+
+});
+
+liner.on('end', function () {
+
+    console.log('Read the proto definitions.');
+    console.log('Finding deprecated definitions in mw');
+
+    console.log('DEPRECATED', deprecatedFields.length);
+    for (var i = 0; i < deprecatedFields.length; i++) {
+        grepWithFork(codeDir, deprecatedFields[i], onDone, true);
+    }
+
+});
+
+var onDone = function () {
+    count++;
+
+    if (count ===  deprecatedFields.length - 1) {
+        console.log('DEPRECATED USED:', deprecatedUsed.length, '\n', deprecatedUsed);
+
+        var usedDep = deprecatedUsed.length;
+
+        console.log('\n\n\nMOBILEWEB STATS:');
+        //console.log('\nUsing ' + Math.round(used * 100 / (total + totalDep)) + '% of the proto (' + Math.round(used * 100 / total) + '% of active commands)');
+        console.log('Still using ' + usedDep + ' deprecated commands');
+
+        process.exit();
+    }
+};
+
+var grepWithFork = function (filename, command, callback, deprecated) {
+
+    var cmd = "egrep -R '" + command + "' " + filename;
+
+    var cmdAlt;
+
+    if (command.indexOf('ALLOW_') !== -1) {
+
+        console.log('alt', command.substring(6, command.length));
+        cmdAlt = "egrep -R '" + command.substring(6, command.length) + "' " + filename;
+
+        //var cmdAlt = "egrep -R '" + command + "' " + filename;
+    }
+    else {
+        cmdAlt = null;
+    }
+
+    exec(cmd, function (err, stdout, stderr) {
+
+        // Valid command we're not using
+        if (stdout.length === 0) {
+
+        }
+        else {
+            if (deprecated) {
+                deprecatedUsed.push(command);
+            }
+        }
+        callback();
+    });
+
+    if (cmdAlt) {
+        exec(cmdAlt, function (err, stdout, stderr) {
+            console.log('exec alt')
+            // Valid command we're not using
+            if (stdout.length === 0) {
+
+            }
+            else {
+                if (deprecated) {
+                    deprecatedUsed.push(command);
+                }
+            }
+            callback();
+        });
+    }
+};
+
+app.get('/', function (req, res) {
+    res.send('Hello World!');
+});
+
+var server = app.listen(3002, function () {
+
+    var host = server.address().address;
+    var port = server.address().port;
+
+    console.log('Example app listening at http://%s:%s', host, port);
+});

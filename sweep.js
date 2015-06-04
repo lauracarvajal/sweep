@@ -7,7 +7,7 @@ var exec = require('child_process').exec;
 var source = fs.createReadStream('/Users/laura/bma-proto/proto/messaging.proto');
 
 var messagingPattern = /^    CLIENT_[^_]|^    SERVER_[^_]/;
-var codeDir = '/Users/laura/mobileweb/frontend/platform/public/js/ /Users/laura/mobileweb/frontend/core/public/js/';
+var codeDir = '/Users/laura/mobileweb/frontend/platform/public/js/ /Users/laura/mobileweb/frontend/core/public/js/ /Users/laura/mobileweb/frontend/badoo/public/js/ /Users/laura/mobileweb/frontend/hotornot/public/js/'
 source.pipe(liner);
 
 var deprecatedCommands = [];
@@ -64,7 +64,7 @@ var onDone = function () {
     count++;
 
     if (count === /*nonDeprecatedCommands.length +*/ deprecatedCommands.length - 1) {
-        console.log('DEPRECATED USED:', deprecatedUsed.length, '\n', deprecatedUsed);
+        //console.log('DEPRECATED USED', deprecatedUsed.length, deprecatedUsed);
         // console.log('DEPRECATED UNUSED', deprecatedUnused.length);//, deprecatedUsed);
         // console.log('NON DEPRECATED UNUSED', nonDeprecatedUnused.length, nonDeprecatedUnused);
         // console.log('NON DEPRECATED USED', nonDeprecatedUsed.length);//, nonDeprecatedUsed);
