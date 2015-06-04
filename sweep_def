@@ -6,27 +6,69 @@ var exec = require('child_process').exec;
 
 var source = fs.createReadStream('/Users/laura/bma-proto/proto/definitions.proto');
 
-var pattern = /^    /;
-var codeDir = '/Users/laura/mobileweb/frontend/platform/public/js/ /Users/laura/mobileweb/frontend/core/public/js/ /Users/laura/mobileweb/frontend/badoo/public/js/ /Users/laura/mobileweb/frontend/hotornot/public/js/';
+var pattern = /^    required|    optional|    repeated/;
+var codeDir = '/Users/laura/mobileweb/frontend/platform/public/js /Users/laura/mobileweb/frontend/core/public/js /Users/laura/mobileweb/frontend/badoo/public/js /Users/laura/mobileweb/frontend/hotornot/public/js';
 source.pipe(liner);
 
 var deprecatedFields = [];
 var deprecatedUsed = [];
 
 var count = 0;
+var lineNumber = 0;
+
+
+function camelCase(input) {
+
+
+    var result = input.toLowerCase().replace(/_(.)/g, function(match, group1) {
+        return group1.toUpperCase();
+    });
+
+
+    result = result.charAt(0).toUpperCase() + result.slice(1);
+
+    return result;
+}
 
 liner.on('readable', function () {
     var line;
+    lineNumber++;
 
     while (line = liner.read()) {
 
-        if (pattern.test(line)) {
-            var deprecated = line.indexOf('[deprecated=true]') > 0;
-            var commandName = line.substring(4, line.indexOf(' ='));
+        var deprecated = line.indexOf('[deprecated=true]') > 0;
+        var commandName;
+        var getter;
+        var setter;
 
-            if (deprecated) {
-                deprecatedFields.push(commandName);
-            }
+        // message object, enum object or field
+        if (pattern.test(line)) {
+
+            // message field
+            //if (line.indexOf('    ')) {
+            commandName = line.substring(4 + 8 + 1, line.indexOf(' ='));
+            commandName = commandName.substring(commandName.indexOf(' ') + 1, commandName.length);
+            getter = 'get' + camelCase(commandName);
+            setter = 'set' + camelCase(commandName);
+            console.log('CAMELIZED', getter);
+            console.log('CAMELIZED', setter);
+            //}
+
+            // message object or enum object
+            // else {
+            //     console.log('message or enum', line)
+            // }
+        }
+        // enum item
+        else if (line.indexOf('    ')) {
+            commandName = line.substring(4, line.indexOf(' ='));
+        }
+
+        if (deprecated && setter) {
+            deprecatedFields.push(setter);
+        }
+        if (deprecated && getter) {
+            deprecatedFields.push(getter);
         }
     }
 
@@ -67,11 +109,8 @@ var grepWithFork = function (filename, command, callback, deprecated) {
     var cmdAlt;
 
     if (command.indexOf('ALLOW_') !== -1) {
-
         console.log('alt', command.substring(6, command.length));
         cmdAlt = "egrep -R '" + command.substring(6, command.length) + "' " + filename;
-
-        //var cmdAlt = "egrep -R '" + command + "' " + filename;
     }
     else {
         cmdAlt = null;
@@ -85,6 +124,7 @@ var grepWithFork = function (filename, command, callback, deprecated) {
         }
         else {
             if (deprecated) {
+                console.log('found somewhere: ', command)
                 deprecatedUsed.push(command);
             }
         }
