@@ -5,6 +5,15 @@ var liner = require('./liner');
 var exec = require('child_process').exec;
 
 var source = fs.createReadStream('/Users/laura/bma-proto/proto/definitions.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/awards.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/external_provider.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/multimedia.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/payments.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/profile_score.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/promo_banners.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/push.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/social.proto');
+//var source = fs.createReadStream('/Users/laura/bma-proto/proto/features/stats.proto');
 
 var pattern = /^    required|    optional|    repeated/;
 var codeDir = '/Users/laura/mobileweb/frontend/platform/public/js /Users/laura/mobileweb/frontend/core/public/js /Users/laura/mobileweb/frontend/badoo/public/js /Users/laura/mobileweb/frontend/hotornot/public/js';
@@ -16,14 +25,11 @@ var deprecatedUsed = [];
 var count = 0;
 var lineNumber = 0;
 
-
 function camelCase(input) {
-
 
     var result = input.toLowerCase().replace(/_(.)/g, function(match, group1) {
         return group1.toUpperCase();
     });
-
 
     result = result.charAt(0).toUpperCase() + result.slice(1);
 
@@ -48,10 +54,11 @@ liner.on('readable', function () {
             //if (line.indexOf('    ')) {
             commandName = line.substring(4 + 8 + 1, line.indexOf(' ='));
             commandName = commandName.substring(commandName.indexOf(' ') + 1, commandName.length);
-            getter = 'get' + camelCase(commandName);
-            setter = 'set' + camelCase(commandName);
-            console.log('CAMELIZED', getter);
-            console.log('CAMELIZED', setter);
+            getter = 'get' + camelCase(commandName) + '(';
+            setter = 'set' + camelCase(commandName) + '(';
+
+                //console.log('getter', getter)
+                //console.log('setter', setter)
             //}
 
             // message object or enum object
@@ -65,10 +72,14 @@ liner.on('readable', function () {
         }
 
         if (deprecated && setter) {
-            deprecatedFields.push(setter);
+            if (deprecatedFields.indexOf(setter) === -1) {
+                deprecatedFields.push(setter);
+            }
         }
         if (deprecated && getter) {
-            deprecatedFields.push(getter);
+            if (deprecatedFields.indexOf(getter) === -1) {
+                deprecatedFields.push(getter);
+            }
         }
     }
 
@@ -104,13 +115,13 @@ var onDone = function () {
 
 var grepWithFork = function (filename, command, callback, deprecated) {
 
-    var cmd = "egrep -R '" + command + "' " + filename;
+    var cmd = "fgrep -R '" + command + "' " + filename;
 
     var cmdAlt;
 
     if (command.indexOf('ALLOW_') !== -1) {
         console.log('alt', command.substring(6, command.length));
-        cmdAlt = "egrep -R '" + command.substring(6, command.length) + "' " + filename;
+        cmdAlt = "fgrep -R '" + command.substring(6, command.length) + "' " + filename;
     }
     else {
         cmdAlt = null;
@@ -124,7 +135,7 @@ var grepWithFork = function (filename, command, callback, deprecated) {
         }
         else {
             if (deprecated) {
-                console.log('found somewhere: ', command)
+                //console.log('found somewhere: ', command)
                 deprecatedUsed.push(command);
             }
         }
